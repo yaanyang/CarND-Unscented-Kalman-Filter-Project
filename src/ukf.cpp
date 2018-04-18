@@ -145,38 +145,37 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
     }
 
     // skip prediction/update if not using given sensors
-    if (meas_package.sensor_type_ == MeasurementPackage::RADAR && !use_radar_)
-        ||
-            (meas_package.sensor_type_ == MeasurementPackage::LASER && !use_laser_)
-        {
-            /*****************************************************************************
+    if ((meas_package.sensor_type_ == MeasurementPackage::RADAR && !use_radar_) ||
+        (meas_package.sensor_type_ == MeasurementPackage::LASER && !use_laser_))
+    {
+        /*****************************************************************************
             *  Prediction
             ****************************************************************************/
-            
-            //compute the time elapsed between the current and previous measurements
-            float dt = (meas_package.timestamp_ - time_us_) / 1000000.0; //dt - expressed in seconds
-            time_us_ = meas_package.timestamp_;
-            
-            Prediction(dt);
 
-            /*****************************************************************************
+        //compute the time elapsed between the current and previous measurements
+        float dt = (meas_package.timestamp_ - time_us_) / 1000000.0; //dt - expressed in seconds
+        time_us_ = meas_package.timestamp_;
+
+        Prediction(dt);
+
+        /*****************************************************************************
             *  Update
             ****************************************************************************/
 
-            if (meas_package.sensor_type_ == MeasurementPackage::RADAR)
-            {
-                // Radar updates
-                UpdateRadar(meas_package)                
-            }
-            else if (meas_package.sensor_type_ == MeasurementPackage::LASER)
-            {
-                // Laser updates
-                UpdateLidar(meas_package)                
-            }
+        if (meas_package.sensor_type_ == MeasurementPackage::RADAR)
+        {
+            // Radar updates
+            UpdateRadar(meas_package)
+        }
+        else if (meas_package.sensor_type_ == MeasurementPackage::LASER)
+        {
+            // Laser updates
+            UpdateLidar(meas_package)
+        }
 
-            // print the output
-            cout << "x_ = " << x_ << endl;
-            cout << "P_ = " << P_ << endl;
+        // print the output
+        cout << "x_ = " << x_ << endl;
+        cout << "P_ = " << P_ << endl;
         }
 }
 
@@ -202,7 +201,7 @@ void UKF::Prediction(double delta_t)
     MatrixXd Xsig = MatrixXd(n_x_, 2 * n_x_ + 1);
 
     // calculate square root of P
-    MatrixXd A = P.llt().matrixL();
+    MatrixXd A = P_.llt().matrixL();
 
     // set first column of sigma point matrix
     Xsig.col(0) = x_;
