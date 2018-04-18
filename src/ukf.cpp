@@ -113,7 +113,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
         // first measurement
         cout << "UKF: " << endl;
 
-        if (meas_package.sensor_type_ == MeasurementPackage::RADAR)
+        if (meas_package.sensor_type_ == MeasurementPackage::RADAR && use_radar_)
         {
             /**
             Convert radar from polar to cartesian coordinates and initialize state.
@@ -121,7 +121,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
             x_ << meas_package.raw_measurements_[0] * cos(meas_package.raw_measurements_[1]),
                 meas_package.raw_measurements_[0] * sin(meas_package.raw_measurements_[1]), 0, 0, 0;         
         }
-        else if (meas_package.sensor_type_ == MeasurementPackage::LASER)
+        else if (meas_package.sensor_type_ == MeasurementPackage::LASER && use_laser_)
         {
             /**
             Initialize state.
@@ -130,8 +130,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
         }
 
         // initialize state covariance matrix P
-        P_ << 0.15, 0, 0, 0, 0,
-            0, 0.15, 0, 0, 0,
+        P_ << 1, 0, 0, 0, 0,
+            0, 1, 0, 0, 0,
             0, 0, 1, 0, 0,
             0, 0, 0, 1, 0,
             0, 0, 0, 0, 1;
@@ -149,8 +149,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
         (meas_package.sensor_type_ == MeasurementPackage::LASER && use_laser_))
     {
         /*****************************************************************************
-            *  Prediction
-            ****************************************************************************/
+        *  Prediction
+        ****************************************************************************/
 
         //compute the time elapsed between the current and previous measurements
         float dt = (meas_package.timestamp_ - time_us_) / 1000000.0; //dt - expressed in seconds
@@ -159,8 +159,8 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package)
         Prediction(dt);
 
         /*****************************************************************************
-            *  Update
-            ****************************************************************************/
+        *  Update
+        ****************************************************************************/
 
         if (meas_package.sensor_type_ == MeasurementPackage::RADAR)
         {
@@ -203,14 +203,17 @@ void UKF::Prediction(double delta_t)
     // calculate square root of P
     MatrixXd A = P_.llt().matrixL();
 
+    // set lambda for non-augmented sigma points
+    int lambda_x = 3 - n_x_;
+
     // set first column of sigma point matrix
     Xsig.col(0) = x_;
 
     // set remaining sigma points
     for (int i = 0; i < n_x_; ++i)
     {
-        Xsig.col(i + 1) = x_ + sqrt(lambda_ + n_x_) * A.col(i);
-        Xsig.col(i + 1 + n_x_) = x_ - sqrt(lambda_ + n_x_) * A.col(i);
+        Xsig.col(i + 1) = x_ + sqrt(lambda_x + n_x_) * A.col(i);
+        Xsig.col(i + 1 + n_x_) = x_ - sqrt(lambda_x + n_x_) * A.col(i);
     }
 
     /*****************************************************************************
@@ -435,6 +438,9 @@ void UKF::UpdateLidar(MeasurementPackage meas_package)
     // update state mean and covariance matrix
     x_ += K * z_diff;
     P_ -= K * S * K.transpose();
+
+    // calculate NIS
+    NIS_laser_ = z_diff.transpose() * S.inverse() * z_diff;
 }
 
 /**
@@ -559,4 +565,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package)
     // update state mean and covariance matrix
     x_ += K * z_diff;
     P_ -= K * S * K.transpose();
+
+    // calculate NIS
+    NIS_radar_ = z_diff.transpose() * S.inverse() * z_diff;
 }
